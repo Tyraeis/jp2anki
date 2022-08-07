@@ -1,8 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import { greet } from '../pkg';
+import * as ReactDOM from 'react-dom/client';
+import { init, tokenize } from '../pkg';
 
-ReactDOM.render(
-    <p>{greet("world")}</p>,
-    document.body
+init();
+
+const root = ReactDOM.createRoot(document.getElementById("main"));
+const tks: any[] = tokenize("そして我々を選んだのかもしれない。");
+root.render(
+    <div>{
+        tks.map((tk, i) => <div key={i}>{JSON.stringify(tk)}</div>)
+    }</div>
 );

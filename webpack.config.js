@@ -4,7 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin')
 
 module.exports = {
-    mode: 'production',
+    mode: 'development',
     entry: './www/bootstrap.js',
     devtool: 'source-map',
     output: {
@@ -32,7 +32,7 @@ module.exports = {
         extensions: ['.tsx', '.ts', '.js'],
     },
     plugins: [
-        new HtmlWebpackPlugin({ title: "JP2Anki" }),
+        new HtmlWebpackPlugin({ title: "JP2Anki", template: "template.html" }),
         new WasmPackPlugin({ crateDirectory: path.resolve(__dirname, '.') }),
         new MiniCssExtractPlugin()
     ],
@@ -45,4 +45,7 @@ module.exports = {
     experiments: {
         syncWebAssembly: true
     },
+    performance: {
+        hints: false
+    }
 };

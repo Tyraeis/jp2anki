@@ -9,4 +9,17 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasm-bindgen = "0.2.82"
+lindera = { version = "0.14.0", features = ["ipadic"] }
+serde = { version = "1.0.141", features = ["derive"] }
+wasm-bindgen = { version = "0.2.82", features = ["serde-serialize"] }
+console_error_panic_hook = "0.1.7"
+
+[profile.dev]
+opt-level = "z"
+
+[profile.release]
+opt-level = "z"
+lto = "thin"
+
+[workspace]
+members = ["jp2anki-dict", "jp2anki-dict-builder"]
