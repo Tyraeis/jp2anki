@@ -1,5 +1,6 @@
-use chrono::prelude::*;
-use jp2anki_dict::{DictionaryEntry, Definition, Example, Source, Dictionary};
+use std::io::Write;
+
+use jp2anki_dict::{DictionaryEntry, Definition, Example, Source, DictionaryWriter};
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, de::DeserializeOwned};
 use reqwest::{blocking::{Client, RequestBuilder}, StatusCode};
@@ -140,11 +141,6 @@ impl WkClient {
 pub struct WkRequest(RequestBuilder);
 
 impl WkRequest {
-    pub fn query(mut self, query: &[(&str, &str)]) -> Self {
-        self.0 = self.0.query(query);
-        self
-    }
-
     pub fn send<T: DeserializeOwned>(self) -> Result<T> {
         let resp = self.0.send()?;
         if resp.status() == StatusCode::OK {
@@ -155,22 +151,16 @@ impl WkRequest {
     }
 }
 
-pub fn update_wanikani(dict: &mut Dictionary, last_update: Option<DateTime<Utc>>, token: &str) -> Result<()> {
+pub fn update_wanikani<W: Write>(dict: &mut DictionaryWriter<W>, token: &str) -> Result<()> {
     let client = WkClient::new(token);
-    let mut request = client.get(WK_SUBJECTS_ENDPOINT);
-
-    if let Some(last_update) = last_update {
-        request = request.query(&[
-            ("updated_after", last_update.to_rfc3339().as_str())
-        ]);
-    }
+    let request = client.get(WK_SUBJECTS_ENDPOINT);
 
     let mut subjects: WkSubjects = request.send()?;
     loop {
         println!("Found {} updated WaniKani entries", subjects.data.len());
         for subject in subjects.data {
             if let Some(entry) = subject.into_dictionary_entry() {
-                dict.insert(entry);
+                dict.add(entry)?;
             }
         }
 

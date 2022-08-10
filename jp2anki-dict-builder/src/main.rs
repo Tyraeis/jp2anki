@@ -3,9 +3,8 @@
 mod wanikani;
 mod jmdict;
 
-use std::{path::Path, fs::File};
-use jp2anki_dict::Dictionary;
-use chrono::prelude::*;
+use std::{path::Path, fs::File, io::BufWriter};
+use jp2anki_dict::DictionaryWriter;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -15,28 +14,20 @@ struct Args {
     token: Option<String>,
     #[clap(short, long, value_parser)]
     jmdict_path: Option<String>,
-    #[clap(short, long, value_parser, default_value_t = String::from("dictionary.bin"))]
-    path: String,
+    #[clap(short, long, value_parser, default_value_t = String::from("dictionary"))]
+    dict_name: String,
 }
 
 fn main() {
     let args = Args::parse();
 
-    let path = Path::new(&args.path);
-    let mut dict = path.exists()
-        .then_some(())
-        .and_then(|_| File::open(path).ok())
-        .and_then(|f| bincode::deserialize_from(f).ok())
-        .unwrap_or_else(|| {
-            println!("Couldn't open dictionary; creating new dictionary...");
-            Dictionary::new()
-        });
+    let path = Path::new(&args.dict_name);
+    let dat_fp = File::create(&path.with_extension("dat")).unwrap();
+    let mut dict = DictionaryWriter::new(BufWriter::new(dat_fp));
         
     if let Some(token) = &args.token {
         println!("Updating WaniKani entries...");
-        let last_updated = dict.wanikani_updated_on.clone();
-        wanikani::update_wanikani(&mut dict, last_updated, token).unwrap();
-        dict.wanikani_updated_on = Some(Utc::now());
+        wanikani::update_wanikani(&mut dict, token).unwrap();
     }
 
     if let Some(ref jmdict_path) = args.jmdict_path {
@@ -44,11 +35,10 @@ fn main() {
         if jmdict_path.exists() {
             println!("Updating JMDict entries...");
             jmdict::update_jmdict(&mut dict, jmdict_path).unwrap();
-            dict.jmdict_updated_on = Some(Utc::now());
         }
     }
 
     println!("Saving dictionary...");
-    let f = File::create(path).unwrap();
-    bincode::serialize_into(f, &dict).unwrap();
+    let idx_fp = File::create(path.with_extension("idx")).unwrap();
+    dict.finish(idx_fp).unwrap();
 }

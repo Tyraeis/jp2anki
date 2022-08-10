@@ -1,6 +1,6 @@
-use std::{fs::File, io::{Read, BufRead}, path::Path};
+use std::{fs::File, io::{Read, BufRead, Write}, path::Path};
 
-use jp2anki_dict::{DictionaryEntry, Definition, Example, Source, Dictionary};
+use jp2anki_dict::{DictionaryEntry, Definition, Example, Source, DictionaryWriter};
 use quick_xml::{events::{Event, BytesStart, attributes::Attribute, BytesEnd}, Reader};
 use anyhow::Result;
 use thiserror::Error;
@@ -275,7 +275,7 @@ impl JMDEntry {
     }
 }
 
-pub fn update_jmdict<P: AsRef<Path>>(dict: &mut Dictionary, path: P) -> Result<()> {
+pub fn update_jmdict<W: Write>(dict: &mut DictionaryWriter<W>, path: impl AsRef<Path>) -> Result<()> {
     let mut fp = File::open(path)?;
     let mut buf = Vec::new();
     fp.read_to_end(&mut buf)?;
@@ -301,7 +301,7 @@ pub fn update_jmdict<P: AsRef<Path>>(dict: &mut Dictionary, path: P) -> Result<(
         }
     }
     for entry in jmdict.entries {
-        dict.insert(entry.into_dictionary_entry())
+        dict.add(entry.into_dictionary_entry())?;
     }
 
     Ok(())
