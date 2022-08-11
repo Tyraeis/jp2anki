@@ -73,7 +73,7 @@ pub struct WkReading {
 }
 
 impl WkSubject {
-    pub fn into_dictionary_entry(self) -> Option<DictionaryEntry> {
+    pub fn into_dictionary_entry(self) -> Result<Option<DictionaryEntry>> {
         match self {
             WkSubject::Vocabulary { id, data } => {
                 let WkVocab {
@@ -99,23 +99,25 @@ impl WkSubject {
                 let examples = context_sentences.into_iter()
                     .map(|sentence| {
                         Example {
-                            definition: None,
+                            for_definition: None,
                             en: sentence.en,
                             ja: sentence.ja
                         }
                     })
                     .collect();
 
-                Some(DictionaryEntry {
+                let definition = Definition::new(definition, data.parts_of_speech, vec!["wk".into()])?;
+
+                Ok(Some(DictionaryEntry {
                     forms: vec![characters],
                     source: Source::WaniKani(id),
-                    definitions: vec![Definition::new(definition, vec!["wk".into()])],
+                    definitions: vec![definition],
                     audio: Some(audio),
                     readings,
                     examples,
-                })
+                }))
             },
-            _ => None
+            _ => Ok(None)
         }
     }
 }
@@ -159,8 +161,10 @@ pub fn update_wanikani<W: Write>(dict: &mut DictionaryWriter<W>, token: &str) ->
     loop {
         println!("Found {} updated WaniKani entries", subjects.data.len());
         for subject in subjects.data {
-            if let Some(entry) = subject.into_dictionary_entry() {
-                dict.add(entry)?;
+            match subject.into_dictionary_entry() {
+                Ok(Some(entry)) => dict.add(entry)?,
+                Ok(None) => (),
+                Err(e) => eprintln!("{}", e)
             }
         }
 

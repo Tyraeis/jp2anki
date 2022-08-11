@@ -1,6 +1,6 @@
 use std::{fs::File, io::{Read, BufRead, Write}, path::Path};
 
-use jp2anki_dict::{DictionaryEntry, Definition, Example, Source, DictionaryWriter};
+use jp2anki_dict::{DictionaryEntry, Definition, Example, Source, DictionaryWriter, DictError};
 use quick_xml::{events::{Event, BytesStart, attributes::Attribute, BytesEnd}, Reader};
 use anyhow::Result;
 use thiserror::Error;
@@ -216,11 +216,13 @@ xml_struct! {
 }
 
 impl JMDEntry {
-    fn into_dictionary_entry(self) -> DictionaryEntry {
+    fn into_dictionary_entry(self) -> Result<DictionaryEntry> {
         let forms = self.k_ele.into_iter()
             .map(|kanji| kanji.keb)
             .collect();
 
+        let mut def_pos = Vec::new();
+        let mut def_flags = Vec::new();
         let definitions = self.sense.iter()
             .map(|sense| {
                 let definition = sense.gloss.iter()
@@ -228,13 +230,21 @@ impl JMDEntry {
                     .intersperse(", ")
                     .collect();
                 
+                if sense.pos.len() > 0 {
+                    def_pos = sense.pos.clone();
+                }
+                
                 let mut flags = sense.misc.clone();
                 flags.extend(sense.dial.iter().cloned());
                 flags.extend(sense.field.iter().cloned());
 
-                Definition::new(definition, flags)
+                if flags.len() > 0 {
+                    def_flags = flags;
+                }
+
+                Definition::new(definition, def_pos.clone(), def_flags.clone())
             })
-            .collect();
+            .collect::<Result<Vec<Definition>, DictError>>()?;
 
         let readings = self.r_ele.into_iter()
             .map(|reading| reading.reb)
@@ -253,7 +263,7 @@ impl JMDEntry {
 
                         if let (Some(en), Some(ja)) = (en, ja) {
                             Some(Example {
-                                definition: Some(i),
+                                for_definition: Some(i),
                                 en: en.text.clone(),
                                 ja: ja.text.clone()
                             })
@@ -264,14 +274,14 @@ impl JMDEntry {
             })
             .collect();
 
-        DictionaryEntry {
+        Ok(DictionaryEntry {
             forms,
             source: Source::JMDict(self.ent_seq.trim().parse().unwrap_or(-1)),
             definitions,
             audio: None,
             readings,
             examples 
-        }
+        })
     }
 }
 
@@ -301,7 +311,7 @@ pub fn update_jmdict<W: Write>(dict: &mut DictionaryWriter<W>, path: impl AsRef<
         }
     }
     for entry in jmdict.entries {
-        dict.add(entry.into_dictionary_entry())?;
+        dict.add(entry.into_dictionary_entry()?)?;
     }
 
     Ok(())

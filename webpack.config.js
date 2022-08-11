@@ -1,7 +1,8 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin')
+const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     mode: 'development',
@@ -34,7 +35,13 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({ title: "JP2Anki", template: "template.html" }),
         new WasmPackPlugin({ crateDirectory: path.resolve(__dirname, '.') }),
-        new MiniCssExtractPlugin()
+        new MiniCssExtractPlugin(),
+        new CopyPlugin({
+            patterns: [
+                path.resolve(__dirname, "jp2anki-dict-builder", "dictionary.dat"),
+                path.resolve(__dirname, "jp2anki-dict-builder", "dictionary.idx"),
+            ]
+        })
     ],
     devServer: {
         static: {

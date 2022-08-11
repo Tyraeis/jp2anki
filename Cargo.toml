@@ -13,6 +13,7 @@ lindera = { version = "0.14.0", features = ["ipadic"] }
 serde = { version = "1.0.141", features = ["derive"] }
 wasm-bindgen = { version = "0.2.82", features = ["serde-serialize"] }
 console_error_panic_hook = "0.1.7"
+jp2anki-dict = { version = "0.1.0", path = "jp2anki-dict" }
 
 [profile.dev]
 opt-level = "z"

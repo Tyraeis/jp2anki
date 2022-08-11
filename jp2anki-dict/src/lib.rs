@@ -1,7 +1,9 @@
 use std::{collections::{HashMap, BTreeMap, HashSet}, io::{Seek, Write, SeekFrom, Read, Cursor}};
 use flate2::{write::DeflateEncoder, Compression, read::DeflateDecoder};
+use regex::Regex;
 use serde::{Serialize, Deserialize};
 use thiserror::Error;
+use lazy_static::lazy_static;
 
 const ENTRIES_PER_CHUNK: usize = 32;
 const COMPRESSION_LEVEL: Compression = Compression::best();
@@ -11,7 +13,9 @@ pub enum DictError {
     #[error("Bincode ser/de error: {0}")]
     Bincode(#[from] bincode::Error),
     #[error("IO error: {0}")]
-    IO(#[from] std::io::Error)
+    IO(#[from] std::io::Error),
+    #[error("Unknown part of speech: {0:?}")]
+    UnknownPOS(String)
 }
 
 pub type Result<T, E=DictError> = std::result::Result<T, E>;
@@ -24,6 +28,65 @@ pub type Result<T, E=DictError> = std::result::Result<T, E>;
 pub enum Source {
     WaniKani(i32),
     JMDict(i32)
+}
+
+#[derive(
+    Serialize, Deserialize, Debug, 
+    PartialEq, Eq, PartialOrd, Ord, 
+    Hash, Clone, Copy
+)]
+pub enum PartOfSpeech {
+    Noun, Prefix, Verb, Adjective, Adverb,
+    Adnominal, Conjuction, Particle, AuxiliaryVerb,
+    Exclamation, Symbol, Filler, Other
+}
+
+lazy_static! {
+    static ref NOUN_RE: Regex = Regex::new(r"^&n[^;]*;$|noun").unwrap();
+    static ref VERB_RE: Regex = Regex::new(r"^&v[^;]+;$|verb").unwrap();
+    static ref ADJ_RE: Regex = Regex::new(r"^&adj[^;]+;$|adjective").unwrap();
+}
+
+impl TryFrom<&str> for PartOfSpeech {
+    type Error = DictError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(match value {
+            "名詞" | "&ctr;" | "&pn;" | "&suf;" | "numeral" | "counter"
+                => PartOfSpeech::Noun,
+            "接頭詞" | "&pref;" | "prefix"
+                => PartOfSpeech::Prefix,
+            "動詞" | "&cop;"
+                => PartOfSpeech::Verb,
+            "見出し形"
+                => PartOfSpeech::Adjective,
+            "副詞" | "&adv;" | "&adv-to;"
+                => PartOfSpeech::Adverb,
+            "連体詞"
+                => PartOfSpeech::Adnominal,
+            "接続詞" | "&conj;" | "conjunction"
+                => PartOfSpeech::Conjuction,
+            "助詞" | "&prt;"
+                => PartOfSpeech::Particle,
+            "助動詞" | "&aux;" | "&aux-adj;" | "&aux-v;"
+                => PartOfSpeech::AuxiliaryVerb,
+            "感動詞" | "&int;" | "interjection"
+                => PartOfSpeech::Exclamation,
+            "記号"
+                => PartOfSpeech::Symbol,
+            "フィラー"
+                => PartOfSpeech::Filler,
+            "その他" | "&unc;" | "&exp;" | "suffix" | "expression" | "in compounds"
+                => PartOfSpeech::Other,
+            s if NOUN_RE.is_match(s)
+                => PartOfSpeech::Noun,
+            s if VERB_RE.is_match(s)
+                => PartOfSpeech::Verb,
+            s if ADJ_RE.is_match(s)
+                => PartOfSpeech::Adjective,
+            _ => return Err(DictError::UnknownPOS(value.into()))
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -39,19 +102,28 @@ pub struct DictionaryEntry {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Definition {
     pub text: String,
+    pub pos: HashSet<PartOfSpeech>,
     pub flags: Vec<String>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Example {
-    pub definition: Option<usize>,
+    pub for_definition: Option<usize>,
     pub en: String,
     pub ja: String
 }
 
 impl Definition {
-    pub fn new(text: String, flags: Vec<String>) -> Self {
-        Definition { text, flags }
+    pub fn new(text: String, pos: Vec<String>, flags: Vec<String>) -> Result<Self> {
+        let pos = pos.into_iter()
+            .map(|s| s.as_str().try_into())
+            .collect::<Result<HashSet<PartOfSpeech>>>()?;
+
+        Ok(Definition {
+            text,
+            pos,
+            flags
+        })
     }
 }
 
@@ -74,7 +146,7 @@ impl<W: Write> DictionaryWriter<W> {
     }
 
     pub fn add(&mut self, entry: DictionaryEntry) -> Result<()> {
-        for word in &entry.forms {
+        for word in entry.forms.iter().chain(entry.readings.iter()) {
             self.index.entry(word.clone())
                 .or_default()
                 .insert(self.data_position as u32);
@@ -146,7 +218,7 @@ impl<R: Read + Seek> DictionaryReader<R> {
             let chunk = self.read_chunk(*chunk_position)?;
             for entry in chunk {
                 for word in words {
-                    if entry.forms.iter().any(|form| form == word) {
+                    if entry.forms.iter().any(|form| form == word) || entry.readings.iter().any(|reading| reading == word) {
                         result.entry(*word)
                             .or_default()
                             .push(entry.clone());
