@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashMap, io::Cursor, cmp::Reverse};
 use jp2anki_dict::{DictionaryReader, DictionaryEntry, PartOfSpeech};
 use wasm_bindgen::prelude::*;
 use serde::{Serialize, Deserialize};
@@ -85,6 +85,9 @@ impl TextAnalyzer {
         for (word, entries) in self.dictionary.lookup(&all_words).unwrap() {
             words.get_mut(word).unwrap().dict_info = entries;
         }
+
+        let mut words: Vec<AnalyzerResult<'_>> = words.into_values().collect();
+        words.sort_by_key(|res| Reverse(res.count));
 
         JsValue::from_serde(&words).unwrap()
     }
