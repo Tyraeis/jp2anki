@@ -1,8 +1,27 @@
 import React from 'react';
 import { useTextAnalyzer } from '../analyzer';
+import { Filter } from '../filter';
 import ResultsView from './ResultsView';
 
+// Returns true if all of the characters in the string are in either the Hiragana or Katakana Unicode blocks
+function is_kana(s: string): boolean {
+    for (const char of s) {
+        const codepoint = char.codePointAt(0);
+        // Hiragana: 0x304x-0x309x
+        // Katakana: 0x30Ax-0x30Fx
+        if (!(codepoint >= 0x3040 && codepoint < 0x3100)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 const text = "そして我々を選んだのかもしれない。";
+const filter: Filter = [
+    [{ tag: (def, _, ctx) => def.pos.includes(ctx.pos), weight: 1 }],
+    [{ tag: "&arch;", weight: -1}, { tag: "&rare;", weight: -1}],
+    [{ tag: (def, _, ctx) => def.flags.includes("&uk;") == is_kana(ctx.word), weight: 1 }]
+];
 
 export default function App(): JSX.Element {
     let result = useTextAnalyzer(text);
@@ -13,7 +32,7 @@ export default function App(): JSX.Element {
     } else {
         content = <React.Fragment>
             <section className='section'>
-                <ResultsView results={result}/>
+                <ResultsView results={result} filter={filter}/>
             </section>
             <section className='section'>
                 <pre>{JSON.stringify(result, undefined, 4)}</pre>
