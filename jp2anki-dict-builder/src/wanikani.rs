@@ -88,9 +88,8 @@ impl WkSubject {
                     .collect::<String>();
 
                 let audio = pronunciation_audios.into_iter()
-                    .next()
                     .map(|audio| audio.url)
-                    .unwrap_or_else(|| "".into());
+                    .collect();
 
                 let readings = readings.into_iter()
                     .map(|reading| reading.reading)
@@ -112,7 +111,7 @@ impl WkSubject {
                     forms: vec![characters],
                     source: Source::WaniKani(id),
                     definitions: vec![definition],
-                    audio: Some(audio),
+                    audio,
                     readings,
                     examples,
                 }))

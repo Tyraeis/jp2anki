@@ -278,7 +278,7 @@ impl JMDEntry {
             forms,
             source: Source::JMDict(self.ent_seq.trim().parse().unwrap_or(-1)),
             definitions,
-            audio: None,
+            audio: vec![],
             readings,
             examples 
         })

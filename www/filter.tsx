@@ -10,7 +10,7 @@ export type Filter = FilterItem[][];
 
 export interface FilterResult {
     definitions: Definition[],
-    audio: string | null,
+    audio: string[],
     examples: Example[],
     readings: Set<string>
 };
@@ -53,7 +53,7 @@ export function find_best_definitions(data: AnalyzerResult, filter: Filter): Fil
 
     let result: FilterResult = {
         definitions: [],
-        audio: null,
+        audio: [],
         examples: [],
         readings: new Set()
     }
@@ -72,7 +72,7 @@ export function find_best_definitions(data: AnalyzerResult, filter: Filter): Fil
                 result.examples = result.examples.concat(entry.examples);
             }
             if (need_audio && entry.audio != null) {
-                result.audio = entry.audio;
+                result.audio = result.audio.concat(entry.audio);
             }
             if (need_readings) {
                 for (const reading of entry.readings) {
@@ -84,7 +84,7 @@ export function find_best_definitions(data: AnalyzerResult, filter: Filter): Fil
             if (need_definitions && result.definitions.length > 0) {
                 need_definitions = false;
             }
-            if (need_audio && result.audio != null) {
+            if (need_audio && result.audio.length > 0) {
                 need_audio = false;
             }
             if (need_readings && result.readings.size > 0) {

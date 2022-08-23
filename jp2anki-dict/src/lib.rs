@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, BTreeMap, HashSet}, io::{Seek, Write, SeekFrom, Read, Cursor}};
+use std::{collections::{HashMap, BTreeMap, HashSet, BTreeSet}, io::{Seek, Write, SeekFrom, Read, Cursor}};
 use flate2::{write::DeflateEncoder, Compression, read::DeflateDecoder};
 use regex::Regex;
 use serde::{Serialize, Deserialize};
@@ -94,7 +94,7 @@ pub struct DictionaryEntry {
     pub forms: Vec<String>,
     pub source: Source,
     pub definitions: Vec<Definition>,
-    pub audio: Option<String>,
+    pub audio: Vec<String>,
     pub readings: Vec<String>,
     pub examples: Vec<Example>
 }
@@ -129,7 +129,8 @@ impl Definition {
 
 pub struct DictionaryWriter<W: Write> {
     // BTreeMap ensures keys are kept in order, improving compression efficiency
-    index: BTreeMap<String, HashSet<u32>>,
+    // BTreeSet ensures entries are ordered consistently
+    index: BTreeMap<String, BTreeSet<u32>>,
     entry_buffer: Vec<DictionaryEntry>,
     data_position: usize,
     data: W,
@@ -263,7 +264,7 @@ mod tests {
             forms: vec!["A".into()],
             source: Source::JMDict(1),
             definitions: vec![],
-            audio: None,
+            audio: vec![],
             readings: vec![],
             examples: vec![]
         }).expect("error in dict_w.add");
@@ -289,7 +290,7 @@ mod tests {
             forms: vec!["A".into(), "AA".into(), "Q".into()],
             source: Source::JMDict(1),
             definitions: vec![],
-            audio: None,
+            audio: vec![],
             readings: vec![],
             examples: vec![]
         }).expect("error in dict_w.add#1");
@@ -297,7 +298,7 @@ mod tests {
             forms: vec!["X".into(), "YX".into(), "Q".into()],
             source: Source::JMDict(2),
             definitions: vec![],
-            audio: None,
+            audio: vec![],
             readings: vec![],
             examples: vec![]
         }).expect("error in dict_w.add#2");

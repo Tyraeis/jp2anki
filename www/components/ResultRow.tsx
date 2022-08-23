@@ -4,13 +4,13 @@ import { Filter, find_best_definitions } from '../filter';
 
 export function ResultHeader(): JSX.Element {
     return <tr>
-        <td>Word</td>
-        <td>Count</td>
-        <td>Reading</td>
-        <td>Part of Speech</td>
-        <td>Definition</td>
-        <td>Examples</td>
-        <td>Audio URL</td>
+        <th>Word</th>
+        <th>Count</th>
+        <th>Reading</th>
+        <th>Part of Speech</th>
+        <th>Definition</th>
+        <th>Examples</th>
+        <th>Audio URL</th>
     </tr>
 }
 
@@ -19,19 +19,13 @@ export function ResultRow({ result, filter }: {
     filter: Filter
 }): JSX.Element {
     let info = find_best_definitions(result, filter);
-    let definitions = info.definitions
-        .map(def => def.text)
-        .join('<br/>');
-    let examples = info.examples
-        .map(ex => ex.ja + '<br/>' + ex.en)
-        .join('<br/><br/>');
     return <tr key={result.word}>
         <td>{result.word}</td>
         <td>{result.count}</td>
         <td>{[...info.readings].join(', ')}</td>
         <td>{result.pos}</td>
-        <td dangerouslySetInnerHTML={{__html: definitions}}></td>
-        <td dangerouslySetInnerHTML={{__html: examples}}></td>
-        <td>{info.audio == null ? "null": info.audio}</td>
+        <td><div className="content">{info.definitions.map((def, i) => <p>{i+1}. {def.text}</p>)}</div></td>
+        <td><div className="content">{info.examples.map(ex => <p>{ex.ja}<br/>{ex.en}</p>)}</div></td>
+        <td>{info.audio.map(a => <p><a href={a} target="_blank">{a}</a></p>)}</td>
     </tr>;
 }

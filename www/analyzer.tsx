@@ -21,7 +21,7 @@ export interface DictionaryEntry {
     forms: string[],
     source: Source,
     definitions: Definition[],
-    audio: string | null,
+    audio: string[],
     readings: string[],
     examples: Example[]
 }
@@ -61,7 +61,9 @@ export function useTextAnalyzer(text: string): AnalyzerResult[] | null {
     }, []);
     useEffect(() => {
         if (analyzer != null) {
-            set_result(analyzer.analyze(text))
+            const res = analyzer.analyze(text);
+            console.log(res);
+            set_result(res);
         }
     }, [analyzer, text])
     return result;

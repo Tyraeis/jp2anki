@@ -18,9 +18,16 @@ function is_kana(s: string): boolean {
 
 const text = "そして我々を選んだのかもしれない。";
 const filter: Filter = [
-    [{ tag: (def, _, ctx) => def.pos.includes(ctx.pos), weight: 1 }],
-    [{ tag: "&arch;", weight: -1}, { tag: "&rare;", weight: -1}],
-    [{ tag: (def, _, ctx) => def.flags.includes("&uk;") == is_kana(ctx.word), weight: 1 }]
+    [
+        { tag: (def, _, ctx) => def.pos.includes(ctx.pos), weight: 1 }
+    ],
+    [
+        { tag: "&arch;", weight: -1},
+        { tag: "&rare;", weight: -1}
+    ],
+    [
+        { tag: (def, _, ctx) => def.flags.includes("&uk;") == is_kana(ctx.word), weight: 1 }
+    ]
 ];
 
 export default function App(): JSX.Element {
@@ -30,17 +37,19 @@ export default function App(): JSX.Element {
     if (result == null) {
         content = <section className='section'>Loading...</section>
     } else {
-        content = <React.Fragment>
-            <section className='section'>
-                <ResultsView results={result} filter={filter}/>
-            </section>
-            <section className='section'>
-                <pre>{JSON.stringify(result, undefined, 4)}</pre>
-            </section>
-        </React.Fragment>
+        content = <section className="section">
+            <ResultsView results={result} filter={filter}/>
+        </section>
     }
 
-    return <div className="container">
-        {content}
+    return <div id="app" className="columns">
+        <div className="column is-one-quarter">
+            <section className="section">
+                Hello, world!
+            </section>
+        </div>
+        <div className="column scroll-y">
+            {content}
+        </div>
     </div>
 }
